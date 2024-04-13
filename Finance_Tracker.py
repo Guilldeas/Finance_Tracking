@@ -1,6 +1,6 @@
 
 '''
-Track spendings
+This software tracks spendings from an ING account by reading the movements from an .xls
 
 Spendings:
 
@@ -28,6 +28,7 @@ Spendings:
 
 import os
 import pandas as pd
+import matplotlib.pyplot as plt
 
 
 def accumulate_movements (Concept):
@@ -151,6 +152,43 @@ Total_accounted = Eating_Out_Work + Uber_Trip + Uber_Eats + Bizum + Restaurants_
 Balance = Movements_df['SALDO (€)'].tolist()[0] - Movements_df['SALDO (€)'].tolist()[-1]
 Unaccounted = Balance - Total_accounted
 
+# Construct new dataframe to store the computed sums
+Tracking_dic = {
+    'Eating out (Work)': [Eating_Out_Work],
+    'Uber Trips': [Uber_Trip],
+    'Uber Eats': [Uber_Eats],
+    'Bizum': [Bizum],
+    'Restaurants Bars': [Restaurants_Bars],
+    'Psychologist': [Psychologist],
+    'Dystopia': [Dystopia],
+    'ChatGPT': [ChatGPT],
+    'Unaccounted Movements': [Unaccounted],
+    'Total sum': [Total_accounted],
+    'Balance': [Balance]
+}
+
+Tracking_df = pd.DataFrame(Tracking_dic)
+
+# Graph results
+
+# Pie Chart
+# Pie chart shouldn't show computed values like Balance, Total sum, etc... 
+Pie_df = Tracking_df.iloc[:, :-2]
+
+# Labels are headers
+labels = Pie_df.columns.tolist()
+
+# Get first row of values
+sizes = Pie_df.iloc[0].tolist()
+
+# Pie chart can't take negative values
+for i in range(0, len(sizes)):
+    sizes[i] = abs(sizes[i])
+
+
+fig, ax = plt.subplots()
+ax.pie(sizes, labels=labels)
+plt.show()
 
 # Print in screen
 print(f'\n\n*************************************\n        ACCUMULATED EXPENSES\n*************************************\n')
