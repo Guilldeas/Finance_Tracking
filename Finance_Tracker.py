@@ -193,7 +193,6 @@ Tracking_dic = {
     ("Balance", "/"): [Balance]
 }
 Tracking_df = pd.DataFrame(Tracking_dic, columns=index)
-print(Tracking_df)
 
 ############################################# Visualize results #############################################
 
@@ -238,8 +237,6 @@ for header in labels:
     
     else:
         labels_curated.append(header[1])
-
-print(f"\labels = {type(labels[0])}\n")
 
 # Get sizes for pie slizes from the row content of the df
 sizes = Pie_df.iloc[0].tolist()
@@ -319,7 +316,12 @@ for i in range(0, len(subcat_count)):
 
 # Create a pie chart
 fig, ax = plt.subplots()
-ax.pie(sizes, labels=labels_curated, colors=colors)
+ax.pie(sizes, labels=labels_curated, colors=colors, autopct='%1.1f%%', shadow=True, pctdistance=0.6, labeldistance=1.1)
+
+# Add a circle in the center to make a 'donut' instead of a 'pie'
+my_circle=plt.Circle( (0,0), 0.75, color='white')
+p=plt.gcf()
+p.gca().add_artist(my_circle)
 
 # Display the plot
 plt.show()
