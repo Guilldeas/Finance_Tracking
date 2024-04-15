@@ -258,8 +258,8 @@ subcat_count = np.empty(0)
 count = 1
 previous_cat = "start"
 
-# 'labels' is a list storing tuples, each contains the columns category followed by the sub-categories. To count how many
-# subcategories are per category we take into account that categories with no subcategory store a "/" in their subcat tuple element
+# 'labels' is a list storing tuples, It's first element contains a columns category. To count how many subcategories 
+# are per category we iterate over the list and count how many times every category is repeated, check "Tracking_dic" structure
 for index in range(0, len(labels)):
     
     # Reads the category header at the current index
@@ -281,22 +281,20 @@ for index in range(0, len(labels)):
         previous_cat = current_cat
         count = 1
 
-    # At the end we don't have a further step to compare and log so we simply log
-    elif (index == len(labels)):
-        subcat_count = np.append(subcat_count, count)
+# Since logging counts is done at upon comparison at the second step we need one last log at the end
+# TEST: if this hack works for all cases
+subcat_count = np.append(subcat_count, count)
 
 
-print(f'\nsubcat count = {subcat_count}\n')
-
+# A handpicked list of 'sequential' colormaps that don't clash with pie slice neighbours
 cmap_1 = plt.get_cmap('Oranges')
 cmap_2 = plt.get_cmap('Blues')
 cmap_3 = plt.get_cmap('Reds')
 cmap_4 = plt.get_cmap('Greens')
 cmap_5 = plt.get_cmap('Purples')
 cmap_6 = plt.get_cmap('Greys')
-
-
 cmaps = [cmap_1, cmap_2, cmap_3, cmap_4, cmap_5, cmap_6]
+
 
 # For each category create a set of colors in the same gradients
 # Create as many colors are there are subcategories
@@ -313,14 +311,11 @@ for i in range(0, len(subcat_count)):
         # Store first colormap
         colors = color
 
-    # Continue 
+    # Continue as normal for the rest of indexes
     else:    
         # Concatenate both arrays
         colors = np.vstack((colors, color))
 
-print(colors)
-
-# Create pie chart
 
 # Create a pie chart
 fig, ax = plt.subplots()
