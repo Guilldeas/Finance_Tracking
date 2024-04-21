@@ -15,11 +15,14 @@ The spendings are grouped into the following categories:
 		- Bars
 		- Bizum ("Transferencia Bizum emitida" - "Transferencia Bizum recibida?")
 		- Uber (No se puede diferencias)
+        - Bazar
 
-	- Living expenses
+	- Subscriprion
 		- Psychologist (Check wether there's a 210 withdrawal in "Cajeros")
 		- Dystopia (Check wether there's a 15 movement in "Transferencia Bizum emitida")
 		- ChatGPT ("Pago en CHATGPT SUBSCRIPTION")
+        - Gym
+        - Public transport
 
     - Untracked
         - "Total" - "Accumulated Spendings"
