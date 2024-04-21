@@ -139,9 +139,13 @@ Movements_df['SALDO (€)'] = Movements_df['SALDO (€)'].astype(float)
 Eating_Out_Work = accumulate_movements('Pago en CAFET. IMDEA NANOCIENCIA MADRID ES') + accumulate_movements('Pago en LA ESTACION DE MAJADAHONDMAJADAHONDA ES')
 Uber_Trip = accumulate_movements('Taxi y Carsharing')
 Uber_Eats = accumulate_movements('Pago en UBER *EATS')
-Bizum = accumulate_movements('Transferencia Bizum emitida')
-Restaurants_Bars = accumulate_movements('Cafeterías y restaurantes') + accumulate_movements('Supermercados y alimentación') - Eating_Out_Work - Uber_Eats
+Bizum = accumulate_movements('Gasto Bizum')
+Restaurants_Bars = (accumulate_movements('Cafeterías y restaurantes')  
+                    - Eating_Out_Work - Uber_Eats - accumulate_movements('Ingreso Bizum') )
+Bazar = accumulate_movements('Gasolina y combustible') + accumulate_movements('Supermercados y alimentación') + accumulate_movements('Regalos y juguetes')
 ChatGPT = accumulate_movements('Pago en CHATGPT SUBSCRIPTION')
+Gym = accumulate_movements('Recibo ALTAFIT GRUPO DE GESTION S.L')
+Public_Transport = accumulate_movements('Transporte público')
 
 # Payments through Bizum and Withdrawals:
 # This payments have to be individualy serached in the list of movements
@@ -149,11 +153,14 @@ Psychologist = sum( find_movement (Amount = -210.00, Concept = 'Cajeros') )
 Dystopia = sum( find_movement (Amount = -15.00, Concept = 'Transferencia Bizum emitida') )
 
 # Tally up
-Total_accounted = Eating_Out_Work + Uber_Trip + Uber_Eats + Bizum + Restaurants_Bars + ChatGPT + Psychologist + Dystopia
+Total_accounted = Eating_Out_Work + Uber_Trip + Uber_Eats + Bizum + Restaurants_Bars + Bazar + ChatGPT + Gym + Psychologist  + Public_Transport + Dystopia  
 
-# Total sum of movements is the balance at the begining of the list minus at the end of the list
-Balance = Movements_df['SALDO (€)'].tolist()[0] - Movements_df['SALDO (€)'].tolist()[-1]
+# Total sum of movements is the balance at the begining of the list minus at the end of the list minus my salary
+Salary = accumulate_movements('Nómina o Pensión')
+Balance = Movements_df['SALDO (€)'].tolist()[0] - Movements_df['SALDO (€)'].tolist()[-1] - Salary
 Unaccounted = Balance - Total_accounted
+
+
 
 
 ################################################## Sort and store results #############################################
@@ -168,9 +175,12 @@ Header_tuples = [
     ("Recreational", "Uber Eats"),
     ("Recreational", "Bars And Restaurants"),
     ("Recreational", "Bizum"),
+    ("Recreational", "Bazar"),
     ("Subscriptions", "Psychologist"),
     ("Subscriptions", "Dystopia"),
     ("Subscriptions", "ChatGPT"),
+    ("Subscriptions", "Gym"),
+    ("Subscriptions", "Public Transport"),
     ("Unaccounted", "/"),
     ("Total Sum", "/"),
     ("Balance", "/")
@@ -179,19 +189,25 @@ index = pd.MultiIndex.from_tuples(Header_tuples, names=["Category", "Subcategory
 
 # Construct dataframe with sorted data
 Tracking_dic = {
+
     ("Savings", "/"): [0],
     ("Eating Out Work", "/"): [Eating_Out_Work],
     ("Uber To Work", "/"): [Uber_Trip],
+    ("Recreational", "Uber Eats"): [Uber_Eats],
     ("Recreational", "Bars And Restaurants"): [Restaurants_Bars],
     ("Recreational", "Bizum"): [Bizum],
-    ("Recreational", "Uber Eats"): [Uber_Eats],
+    ("Recreational", "Bazar"): [Bazar],
     ("Subscriptions", "Psychologist"): [Psychologist],
     ("Subscriptions", "Dystopia"): [Dystopia],
     ("Subscriptions", "ChatGPT"): [ChatGPT],
+    ("Subscriptions", "Gym"): [Gym],
+    ("Subscriptions", "Public Transport"): [Public_Transport],
     ("Unaccounted", "/"): [Unaccounted],
     ("Total Sum", "/"): [Total_accounted],
     ("Balance", "/"): [Balance]
 }
+
+
 Tracking_df = pd.DataFrame(Tracking_dic, columns=index)
 
 ############################################# Visualize results #############################################
@@ -316,7 +332,16 @@ for i in range(0, len(subcat_count)):
 
 # Create a pie chart
 fig, ax = plt.subplots()
-ax.pie(sizes, labels=labels_curated, colors=colors, autopct='%1.1f%%', shadow=True, pctdistance=0.6, labeldistance=1.1)
+
+explode_wedges = []
+for size in sizes:
+    if (size != 0):
+        explode_wedges.append( (70 / size)**2 )
+    
+    else:
+        explode_wedges.append(0)
+
+ax.pie(sizes, labels=labels_curated, colors=colors, autopct='%1.1f%%', shadow=False, pctdistance=0.6, labeldistance=1.1, explode=explode_wedges)
 
 # Add a circle in the center to make a 'donut' instead of a 'pie'
 my_circle=plt.Circle( (0,0), 0.75, color='white')
