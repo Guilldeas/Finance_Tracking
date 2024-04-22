@@ -34,6 +34,38 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
+############################################### Variables ###############################################
+
+# Flags
+Print_to_cmd = False
+Print_Pie_Graphs = False
+Print_expenses_vs_time = True
+
+# Construct a new dataframe to track the spendings into it's categories and sub-categories
+# Define the hierarchical headers with a list of tuples (Category, Subcategory). Tuples with
+# no sub-categories have a placeholder "/".
+Header_tuples = [
+    ("Savings", "/"),
+    ("Eating Out Work", "/"),
+    ("Uber To Work", "/"),
+    ("Recreational", "Uber Eats"),
+    ("Recreational", "Bars And Restaurants"),
+    ("Recreational", "Bizum"),
+    ("Recreational", "Bazar"),
+    ("Subscriptions", "Psychologist"),
+    ("Subscriptions", "Dystopia"),
+    ("Subscriptions", "ChatGPT"),
+    ("Subscriptions", "Gym"),
+    ("Subscriptions", "Public Transport"),
+    ("Unaccounted", "Withdrawals"),
+    ("Unaccounted", "Unknown"),
+    ("Total Sum", "/"),
+    ("Balance", "/")
+]
+index = pd.MultiIndex.from_tuples(Header_tuples, names=["Category", "Subcategory"])
+
+
+
 ########################################## Function definitions ##########################################
 
 def accumulate_movements (Concept, df):
@@ -159,8 +191,11 @@ def Index_by_month(Timestamp, month, year):
         return False
 
 
+####################################################### MAIN CODE ###########################################################
 
-######################### Dynamicaly read files on subfolder "Bank_Monthly_Movements" #########################
+
+
+################################# Dynamicaly read files on subfolder "Bank_Monthly_Movements" ###############################
 
 # Folder structure this code expects:
 #
@@ -181,6 +216,40 @@ Movements_df = pd.read_excel(Movements_path, header=5, sheet_name='Movimientos')
 # Cast the numerical values to floats
 Movements_df['IMPORTE (€)'] = Movements_df['IMPORTE (€)'].astype(float)
 Movements_df['SALDO (€)'] = Movements_df['SALDO (€)'].astype(float)
+
+# Check wether the output file exists
+Output_path = os.path.join(current_directory, 'Output')
+Tracked_expenses_path = 'Tracked_expenses.xlsx'
+Tracked_expenses_path = os.path.join(Output_path, Tracked_expenses_path)
+
+# Check if the file exists
+if not os.path.exists(Tracked_expenses_path):
+
+    # If not create empty excel using headers
+    Output_dic = {
+
+        ("Savings", "/"): [],
+        ("Eating Out Work", "/"): [],
+        ("Uber To Work", "/"): [],
+        ("Recreational", "Uber Eats"): [],
+        ("Recreational", "Bars And Restaurants"): [],
+        ("Recreational", "Bizum"): [],
+        ("Recreational", "Bazar"): [],
+        ("Subscriptions", "Psychologist"): [],
+        ("Subscriptions", "Dystopia"): [],
+        ("Subscriptions", "ChatGPT"): [],
+        ("Subscriptions", "Gym"): [],
+        ("Subscriptions", "Public Transport"): [],
+        ("Unaccounted", "Withdrawals"): [],
+        ("Unaccounted", "Unknown"): [],
+        ("Total Sum", "/"): [],
+        ("Balance", "/"): []
+    }
+
+    # Store data into excel sheet
+    Output_df = pd.DataFrame(Output_dic, columns=index)
+    
+    Output_df.to_excel(Tracked_expenses_path)
 
 
 
@@ -217,7 +286,6 @@ elif (Last_year == First_year):
         Dates.append([month, First_year])
 
 # Iterate through them and store them on a list
-#Months = []
 for date in Dates:
     month, year = date[0], date[1]
 
@@ -226,7 +294,6 @@ for date in Dates:
 
     # Create a dataframe for each month with each indexing series
     Month_df = Movements_df[Indexing_df] 
-    #Months.append(Movements_df[Indexing_df])
 
     # Payments through Bizum and Withdrawals:
     # This payments have to be individualy serached in the list of movements
@@ -272,27 +339,7 @@ for date in Dates:
 
     ################################################## Sort and store results #############################################
 
-    # Construct a new dataframe to track the spendings into it's categories and sub-categories
-    # Define the hierarchical headers with a list of tuples (Category, Subcategory). Tuples with
-    # no sub-categories have a placeholder "/".
-    Header_tuples = [
-        ("Savings", "/"),
-        ("Eating Out Work", "/"),
-        ("Uber To Work", "/"),
-        ("Recreational", "Uber Eats"),
-        ("Recreational", "Bars And Restaurants"),
-        ("Recreational", "Bizum"),
-        ("Recreational", "Bazar"),
-        ("Subscriptions", "Psychologist"),
-        ("Subscriptions", "Dystopia"),
-        ("Subscriptions", "ChatGPT"),
-        ("Subscriptions", "Gym"),
-        ("Subscriptions", "Public Transport"),
-        ("Unaccounted", "Withdrawals"),
-        ("Unaccounted", "Unknown"),
-        ("Total Sum", "/"),
-        ("Balance", "/")
-    ]
+    # This line is already outside of the loop but if I take it out everything breaks so, as a hack, it'll stay here 
     index = pd.MultiIndex.from_tuples(Header_tuples, names=["Category", "Subcategory"])
 
     # Construct dataframe with sorted data
@@ -316,23 +363,32 @@ for date in Dates:
         ("Balance", "/"): [Balance]
     }
 
-
+    # Read data from output excel file into df and append a new column
+    Output_df = pd.read_excel(Tracked_expenses_path)
     Tracking_df = pd.DataFrame(Tracking_dic, columns=index)
+    Output_df = pd.concat([Output_df, Tracking_df], ignore_index=True)
 
+
+    
     ############################################# Visualize results #############################################
 
     # Print in screen
-    verbose = False
-    if (verbose):
-        print(f'\n\n*************************************\n        ACCUMULATED EXPENSES\n*************************************\n')
+    if (Print_to_cmd):
+        print(f'\n\n*************************************\n        ACCUMULATED EXPENSES\n')
+        print(f'              {month}/{year}\n*************************************\n')
+        print(f'    * Savings:  {0:.2f} €')
         print(f'    * Eating out (Work):  {Eating_Out_Work:.2f} €')
         print(f'    * Uber Trips:  {Uber_Trip:.2f} €')
-        print(f'    * Bizum:  {Bizum:.2f} €')
         print(f'    * Uber Eats:  {Uber_Eats:.2f} €')
-        print(f'    * Restaurants Bars:  {Restaurants_Bars:.2f} €')
+        print(f'    * Bars and Restaurants:  {Restaurants_Bars:.2f} €')
+        print(f'    * Bizum:  {Bizum:.2f} €')
+        print(f'    * Bazar:  {Bazar:.2f} €')
         print(f'    * Psychologist:  {Psychologist:.2f} €')
         print(f'    * Dystopia:  {Dystopia:.2f} €')
         print(f'    * ChatGPT:  {ChatGPT:.2f} €')
+        print(f'    * Gym:  {Gym:.2f} €')
+        print(f'    * Public Transport:  {Public_Transport:.2f} €')
+        print(f'    * Withdrawals:  {Withdrawals:.2f} €')
         print(f'\n--------------------------------------\n')
         print(f'    * Total sum:  {Total_accounted:.2f} €')
         print(f'    * Balance:  {Balance:.2f} €')
@@ -438,24 +494,36 @@ for date in Dates:
             # Concatenate both arrays
             colors = np.vstack((colors, color))
 
-
     # Create a pie chart
+    if (Print_Pie_Graphs):
+
+        fig, ax = plt.subplots()
+
+        explode_wedges = []
+        for size in sizes:
+            if (size != 0):
+                explode_wedges.append( 10 / size )
+            
+            else:
+                explode_wedges.append(0)
+
+        ax.pie(sizes, labels=labels_curated, colors=colors, autopct='%1.1f%%', shadow=False, pctdistance=0.6, labeldistance=1.1, explode=explode_wedges)
+        
+        # Add a circle in the center to make a 'donut' instead of a 'pie'
+        my_circle=plt.Circle( (0,0), 0.75, color='white')
+        p=plt.gcf()
+        p.gca().add_artist(my_circle)
+
+        ax.set_title(label = f'Expenses distribution\nMonth : {month}/{year}')
+
+# Write compiled data into the Output excel sheet
+Output_df.to_excel(Tracked_expenses_path)
+
+# Create a graph showing evolution of explenses over time
+if (Print_expenses_vs_time):
+    
     fig, ax = plt.subplots()
 
-    explode_wedges = []
-    for size in sizes:
-        if (size != 0):
-            explode_wedges.append( 10 / size )
-        
-        else:
-            explode_wedges.append(0)
-
-    ax.pie(sizes, labels=labels_curated, colors=colors, autopct='%1.1f%%', shadow=False, pctdistance=0.6, labeldistance=1.1, explode=explode_wedges)
-    ax.set_title(label = f'Expenses distribution\nMonth : {month}/{year}')
-    # Add a circle in the center to make a 'donut' instead of a 'pie'
-    my_circle=plt.Circle( (0,0), 0.75, color='white')
-    p=plt.gcf()
-    p.gca().add_artist(my_circle)
 
 # Display the plot
 plt.show()
