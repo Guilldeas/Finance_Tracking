@@ -33,6 +33,9 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+from datetime import datetime
+
+
 
 ############################################### Variables ###############################################
 
@@ -45,6 +48,7 @@ Print_expenses_vs_time = True
 # Define the hierarchical headers with a list of tuples (Category, Subcategory). Tuples with
 # no sub-categories have a placeholder "/".
 Header_tuples = [
+    ("Month", "/"),
     ("Savings", "/"),
     ("Eating Out Work", "/"),
     ("Uber To Work", "/"),
@@ -227,7 +231,7 @@ if not os.path.exists(Tracked_expenses_path):
 
     # If not create empty excel using headers
     Output_dic = {
-
+        ("Date", "/"): [],
         ("Savings", "/"): [],
         ("Eating Out Work", "/"): [],
         ("Uber To Work", "/"): [],
@@ -251,6 +255,9 @@ if not os.path.exists(Tracked_expenses_path):
     
     Output_df.to_excel(Tracked_expenses_path)
 
+# If it does it exist simply read it to use it later
+else:
+    Output_df = pd.read_excel(Tracked_expenses_path)
 
 
 ######################################## Accumulate and find payments fro each month ########################################
@@ -344,29 +351,28 @@ for date in Dates:
 
     # Construct dataframe with sorted data
     Tracking_dic = {
-
-        ("Savings", "/"): [0],
-        ("Eating Out Work", "/"): [Eating_Out_Work],
-        ("Uber To Work", "/"): [Uber_Trip],
-        ("Recreational", "Uber Eats"): [Uber_Eats],
-        ("Recreational", "Bars And Restaurants"): [Restaurants_Bars],
-        ("Recreational", "Bizum"): [Bizum],
-        ("Recreational", "Bazar"): [Bazar],
-        ("Subscriptions", "Psychologist"): [Psychologist],
-        ("Subscriptions", "Dystopia"): [Dystopia],
-        ("Subscriptions", "ChatGPT"): [ChatGPT],
-        ("Subscriptions", "Gym"): [Gym],
-        ("Subscriptions", "Public Transport"): [Public_Transport],
-        ("Unaccounted", "Withdrawals"): [Withdrawals],
-        ("Unaccounted", "Unknown"): [Unaccounted],
-        ("Total Sum", "/"): [Total_accounted],
-        ("Balance", "/"): [Balance]
+        ("Month", "/"): datetime(year, month, 1),
+        ("Savings", "/"): 0.0,
+        ("Eating Out Work", "/"): Eating_Out_Work,
+        ("Uber To Work", "/"): Uber_Trip,
+        ("Recreational", "Uber Eats"): Uber_Eats,
+        ("Recreational", "Bars And Restaurants"): Restaurants_Bars,
+        ("Recreational", "Bizum"): Bizum,
+        ("Recreational", "Bazar"): Bazar,
+        ("Subscriptions", "Psychologist"): Psychologist,
+        ("Subscriptions", "Dystopia"): Dystopia,
+        ("Subscriptions", "ChatGPT"): ChatGPT,
+        ("Subscriptions", "Gym"): Gym,
+        ("Subscriptions", "Public Transport"): Public_Transport,
+        ("Unaccounted", "Withdrawals"): Withdrawals,
+        ("Unaccounted", "Unknown"): Unaccounted,
+        ("Total Sum", "/"): Total_accounted,
+        ("Balance", "/"): Balance
     }
 
     # Read data from output excel file into df and append a new column
-    Output_df = pd.read_excel(Tracked_expenses_path)
-    Tracking_df = pd.DataFrame(Tracking_dic, columns=index)
-    Output_df = pd.concat([Output_df, Tracking_df], ignore_index=True)
+    Output_df.loc[len(Output_df.index)] = Tracking_dic
+
 
 
     
@@ -400,7 +406,8 @@ for date in Dates:
 
     # Pie Chart
     # This chart shouldn't show computed values like Balance, Total sum, etc... 
-    Pie_df = Tracking_df.iloc[:, :-2]
+    Tracking_df = pd.DataFrame(Tracking_dic, index=[0])
+    Pie_df = Tracking_df.iloc[:, 1:-2]
 
     # Get labels for each pie slize from the df headers
     labels = Pie_df.columns.tolist()
@@ -519,11 +526,40 @@ for date in Dates:
 # Write compiled data into the Output excel sheet
 Output_df.to_excel(Tracked_expenses_path)
 
+
 # Create a graph showing evolution of explenses over time
 if (Print_expenses_vs_time):
     
     fig, ax = plt.subplots()
 
+    # gives a tuple of column name and series for each column in the dataframe
+    Curves = []
+    Output_df = Output_df#.iloc[:, :]
 
+    #("Eating Out Work", "/")
+    #("Uber To Work", "/")
+
+    column_series = Output_df[("Month", "/")]
+    column_list = column_series.tolist()
+    print(column_list)
+    Curves.append( column_list )    
+    column_series = Output_df[("Eating Out Work", "/")]
+    column_list = column_series.tolist()
+    Curves.append( column_list )    
+    column_series = Output_df[("Uber To Work", "/")]
+    column_list = column_series.tolist()
+    Curves.append( column_list )
+    i = 1
+    plt.fill(Curves[0], Curves[i], Curves[i+1])
+    '''
+    for column in Output_df.iloc[:, 1:]:
+        
+        column_series = Output_df[column]
+        column_list = column_series.tolist()
+        Curves.append( column_list )
+
+    for i in range(0, len(Curves)-1):
+        plt.fill(Curves[i], Curves[i+1])
+    '''
 # Display the plot
 plt.show()
