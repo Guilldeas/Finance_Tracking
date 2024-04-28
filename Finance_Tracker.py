@@ -41,7 +41,7 @@ from datetime import datetime
 
 # Flags
 Print_to_cmd = False
-Print_Pie_Graphs = False
+Print_Pie_Graphs = True
 Print_expenses_vs_time = True
 
 
@@ -371,6 +371,9 @@ for date in Dates:
     # Get labels for each pie slize from the df headers
     labels = Output_df.columns.tolist()
 
+    # This chart shouldn't show computed values like Balance, Total sum, etc... 
+    labels = labels[1:-2]
+
     # Labels come from a multindex tuple and therefore look like this ("Category", "Subcategory"), 
     # for aesthetic purposes only subcategories are shown, if there are no subcategories the category is shown
     labels_curated = []
@@ -389,7 +392,6 @@ for date in Dates:
     sizes = Output_df.iloc[-1].tolist()
 
     # This chart shouldn't show computed values like Balance, Total sum, etc... 
-    labels = labels[1:-2]
     sizes = sizes[1:-2]
 
     # Pie chart can't take negative values
@@ -497,34 +499,32 @@ if (Print_expenses_vs_time):
     
     fig, ax = plt.subplots()
 
-    # gives a tuple of column name and series for each column in the dataframe
-    Curves = []
-    Output_df = Output_df#.iloc[:, :]
+    # Extract expenses from dict into list to iterate later while referencing them
+    # Convert dictionary items to a list
+    items_list = list(Output_dic.items())
+    Expenses = []
 
-    #("Eating Out Work", "/")
-    #("Uber To Work", "/")
+    # Initialize previous expense to all zeros with appropiate size
+    acc_expense = np.empty( shape = len( Output_dic[("Month", "/")] ) )
+    skip_dates_col = True
+    for _, expense in items_list[1:-2]:
 
-    column_series = Output_df[("Month", "/")]
-    column_list = column_series.tolist()
-    print(column_list)
-    Curves.append( column_list )    
-    column_series = Output_df[("Eating Out Work", "/")]
-    column_list = column_series.tolist()
-    Curves.append( column_list )    
-    column_series = Output_df[("Uber To Work", "/")]
-    column_list = column_series.tolist()
-    Curves.append( column_list )
-    i = 1
-    plt.fill(Curves[0], Curves[i], Curves[i+1])
-    '''
-    for column in Output_df.iloc[:, 1:]:
-        
-        column_series = Output_df[column]
-        column_list = column_series.tolist()
-        Curves.append( column_list )
+        # Skip the dates column
+        if(skip_dates_col):
+            skip_dates_col = False
+            continue
 
-    for i in range(0, len(Curves)-1):
-        plt.fill(Curves[i], Curves[i+1])
-    '''
+        # Cast to array to sum element wise
+        curr_expense = np.array(expense)
+        acc_expense = curr_expense + acc_expense
+        Expenses.append(acc_expense)
+    
+    # Add them iteratively to fill between the lines
+    for i in range(0, len(Expenses)-1):
+
+        # Dates are shared as a horizontal axis for all curves
+        plt.fill_between( Output_dic[("Month", "/")], Expenses[i], Expenses[i+1], color=colors[i])
+
+
 # Display the plot
 plt.show()
