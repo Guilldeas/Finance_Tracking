@@ -44,30 +44,6 @@ Print_to_cmd = False
 Print_Pie_Graphs = False
 Print_expenses_vs_time = True
 
-# Construct a new dataframe to track the spendings into it's categories and sub-categories
-# Define the hierarchical headers with a list of tuples (Category, Subcategory). Tuples with
-# no sub-categories have a placeholder "/".
-Header_tuples = [
-    ("Month", "/"),
-    ("Savings", "/"),
-    ("Eating Out Work", "/"),
-    ("Uber To Work", "/"),
-    ("Recreational", "Uber Eats"),
-    ("Recreational", "Bars And Restaurants"),
-    ("Recreational", "Bizum"),
-    ("Recreational", "Bazar"),
-    ("Subscriptions", "Psychologist"),
-    ("Subscriptions", "Dystopia"),
-    ("Subscriptions", "ChatGPT"),
-    ("Subscriptions", "Gym"),
-    ("Subscriptions", "Public Transport"),
-    ("Unaccounted", "Withdrawals"),
-    ("Unaccounted", "Unknown"),
-    ("Total Sum", "/"),
-    ("Balance", "/")
-]
-index = pd.MultiIndex.from_tuples(Header_tuples, names=["Category", "Subcategory"])
-
 
 
 ########################################## Function definitions ##########################################
@@ -221,17 +197,16 @@ Movements_df = pd.read_excel(Movements_path, header=5, sheet_name='Movimientos')
 Movements_df['IMPORTE (€)'] = Movements_df['IMPORTE (€)'].astype(float)
 Movements_df['SALDO (€)'] = Movements_df['SALDO (€)'].astype(float)
 
-# Check wether the output file exists
+# Check whether the output file exists
 Output_path = os.path.join(current_directory, 'Output')
 Tracked_expenses_path = 'Tracked_expenses.xlsx'
 Tracked_expenses_path = os.path.join(Output_path, Tracked_expenses_path)
 
-# Check if the file exists
 if not os.path.exists(Tracked_expenses_path):
 
-    # If not create empty excel using headers
+    # If not create empty dict
     Output_dic = {
-        ("Date", "/"): [],
+        ("Month", "/"): [],
         ("Savings", "/"): [],
         ("Eating Out Work", "/"): [],
         ("Uber To Work", "/"): [],
@@ -250,17 +225,13 @@ if not os.path.exists(Tracked_expenses_path):
         ("Balance", "/"): []
     }
 
-    # Store data into excel sheet
-    Output_df = pd.DataFrame(Output_dic, columns=index)
-    
-    Output_df.to_excel(Tracked_expenses_path)
-
-# If it does it exist simply read it to use it later
+# If it does it exist read it into a dict to append new data
 else:
-    Output_df = pd.read_excel(Tracked_expenses_path)
+    Output_df = pd.read_excel(Tracked_expenses_path, header=[0, 1], index_col=0)
+    Output_dic = Output_df.to_dict(orient='list')
 
 
-######################################## Accumulate and find payments fro each month ########################################
+######################################## Accumulate and find payments for each month ########################################
 
 # Get the column series storing dates for each movement
 Dates_df = Movements_df['F. VALOR'] 
@@ -343,42 +314,34 @@ for date in Dates:
 
 
 
-
     ################################################## Sort and store results #############################################
 
-    # This line is already outside of the loop but if I take it out everything breaks so, as a hack, it'll stay here 
-    index = pd.MultiIndex.from_tuples(Header_tuples, names=["Category", "Subcategory"])
+    # Append data to dict
+    Output_dic[("Month", "/")].append(datetime(year, month, 1))
+    Output_dic[("Savings", "/")].append(0.0)
+    Output_dic[("Eating Out Work", "/")].append(Eating_Out_Work)
+    Output_dic[("Uber To Work", "/")].append(Uber_Trip)
+    Output_dic[("Recreational", "Uber Eats")].append(Uber_Eats)
+    Output_dic[("Recreational", "Bars And Restaurants")].append(Restaurants_Bars)
+    Output_dic[("Recreational", "Bizum")].append(Bizum)
+    Output_dic[("Recreational", "Bazar")].append(Bazar)
+    Output_dic[("Subscriptions", "Psychologist")].append(Psychologist)
+    Output_dic[("Subscriptions", "Dystopia")].append(Dystopia)
+    Output_dic[("Subscriptions", "ChatGPT")].append(ChatGPT)
+    Output_dic[("Subscriptions", "Gym")].append(Gym)
+    Output_dic[("Subscriptions", "Public Transport")].append(Public_Transport)
+    Output_dic[("Unaccounted", "Withdrawals")].append(Withdrawals)
+    Output_dic[("Unaccounted", "Unknown")].append(Unaccounted)
+    Output_dic[("Total Sum", "/")].append(Total_accounted)
+    Output_dic[("Balance", "/")].append(Balance)
 
-    # Construct dataframe with sorted data
-    Tracking_dic = {
-        ("Month", "/"): datetime(year, month, 1),
-        ("Savings", "/"): 0.0,
-        ("Eating Out Work", "/"): Eating_Out_Work,
-        ("Uber To Work", "/"): Uber_Trip,
-        ("Recreational", "Uber Eats"): Uber_Eats,
-        ("Recreational", "Bars And Restaurants"): Restaurants_Bars,
-        ("Recreational", "Bizum"): Bizum,
-        ("Recreational", "Bazar"): Bazar,
-        ("Subscriptions", "Psychologist"): Psychologist,
-        ("Subscriptions", "Dystopia"): Dystopia,
-        ("Subscriptions", "ChatGPT"): ChatGPT,
-        ("Subscriptions", "Gym"): Gym,
-        ("Subscriptions", "Public Transport"): Public_Transport,
-        ("Unaccounted", "Withdrawals"): Withdrawals,
-        ("Unaccounted", "Unknown"): Unaccounted,
-        ("Total Sum", "/"): Total_accounted,
-        ("Balance", "/"): Balance
-    }
-
-    # Read data from output excel file into df and append a new column
-    Output_df.loc[len(Output_df.index)] = Tracking_dic
-
+    Output_df = pd.DataFrame.from_dict(Output_dic)
 
 
     
     ############################################# Visualize results #############################################
 
-    # Print in screen
+    # Print into cmd
     if (Print_to_cmd):
         print(f'\n\n*************************************\n        ACCUMULATED EXPENSES\n')
         print(f'              {month}/{year}\n*************************************\n')
@@ -405,12 +368,8 @@ for date in Dates:
     # Graph results
 
     # Pie Chart
-    # This chart shouldn't show computed values like Balance, Total sum, etc... 
-    Tracking_df = pd.DataFrame(Tracking_dic, index=[0])
-    Pie_df = Tracking_df.iloc[:, 1:-2]
-
     # Get labels for each pie slize from the df headers
-    labels = Pie_df.columns.tolist()
+    labels = Output_df.columns.tolist()
 
     # Labels come from a multindex tuple and therefore look like this ("Category", "Subcategory"), 
     # for aesthetic purposes only subcategories are shown, if there are no subcategories the category is shown
@@ -427,7 +386,11 @@ for date in Dates:
             labels_curated.append(header[1])
 
     # Get sizes for pie slizes from the row content of the df
-    sizes = Pie_df.iloc[0].tolist()
+    sizes = Output_df.iloc[-1].tolist()
+
+    # This chart shouldn't show computed values like Balance, Total sum, etc... 
+    labels = labels[1:-2]
+    sizes = sizes[1:-2]
 
     # Pie chart can't take negative values
     for i in range(0, len(sizes)):
@@ -466,8 +429,8 @@ for date in Dates:
             previous_cat = current_cat
             count = 1
 
-    # Since logging counts is done at upon comparison at the second step we need one last log at the end
-    # I need to test if this hack works for all cases
+    # Since logging counts is done upon comparison at the second step we need one last log at the end
+    # (I need to test if this hack works for all cases)
     subcat_count = np.append(subcat_count, count)
     
 
@@ -506,6 +469,7 @@ for date in Dates:
 
         fig, ax = plt.subplots()
 
+        # Explode wedges that are small enough, so that their labes don't clash with each other
         explode_wedges = []
         for size in sizes:
             if (size != 0):
@@ -525,6 +489,7 @@ for date in Dates:
 
 # Write compiled data into the Output excel sheet
 Output_df.to_excel(Tracked_expenses_path)
+
 
 
 # Create a graph showing evolution of explenses over time
