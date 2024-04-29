@@ -41,9 +41,9 @@ from datetime import datetime
 
 # Flags
 Print_to_cmd = False
-Print_Pie_Graphs = True
+Print_Pie_Graphs = False
 Print_expenses_vs_time = True
-Log_On_Excel = False
+Log_On_Excel = True
 
 
 ########################################## Function definitions ##########################################
@@ -197,6 +197,32 @@ Movements_df = pd.read_excel(Movements_path, header=5, sheet_name='Movimientos')
 Movements_df['IMPORTE (€)'] = Movements_df['IMPORTE (€)'].astype(float)
 Movements_df['SALDO (€)'] = Movements_df['SALDO (€)'].astype(float)
 
+
+Output_dic = {
+        ("Month", "/"): [],
+        ("Savings", "/"): [],
+        ("Eating Out Work", "/"): [],
+        ("Uber To Work", "/"): [],
+        ("Recreational", "Uber Eats"): [],
+        ("Recreational", "Bars And Restaurants"): [],
+        ("Recreational", "Bizum"): [],
+        ("Recreational", "Bazar"): [],
+        ("Subscriptions", "Psychologist"): [],
+        ("Subscriptions", "Dystopia"): [],
+        ("Subscriptions", "ChatGPT"): [],
+        ("Subscriptions", "Gym"): [],
+        ("Subscriptions", "Public Transport"): [],
+        ("Unaccounted", "Withdrawals"): [],
+        ("Unaccounted", "Unknown"): [],
+        ("Income", "Salary"): [],
+        ("Income", "Bizums"): [],
+        ("Total Sum Acc", "/"): [],
+        ("Balance", "/"): []
+    }
+'''
+This snippet is just in case I implement a way to programmatically read different bank ls files
+and update the Tracked_expenses accordingly
+
 # Check whether the output file exists
 Output_path = os.path.join(current_directory, 'Output')
 Tracked_expenses_path = 'Tracked_expenses.xlsx'
@@ -227,11 +253,11 @@ if not os.path.exists(Tracked_expenses_path):
         ("Balance", "/"): []
     }
 
-# If it does it exist read it into a dict to append new data
+# If it does exist read it into a dict to append new data
 else:
     Output_df = pd.read_excel(Tracked_expenses_path, header=[0, 1], index_col=0)
     Output_dic = Output_df.to_dict(orient='list')
-
+'''
 
 ######################################## Accumulate and find payments for each month ########################################
 
@@ -502,6 +528,9 @@ for date in Dates:
 
 # Write compiled data into the Output excel sheet
 if (Log_On_Excel):
+    Output_path = os.path.join(current_directory, 'Output')
+    Tracked_expenses_path = 'Tracked_expenses.xlsx'
+    Tracked_expenses_path = os.path.join(Output_path, Tracked_expenses_path)
     Output_df.to_excel(Tracked_expenses_path)
 
 
