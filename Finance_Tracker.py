@@ -43,7 +43,7 @@ from datetime import datetime
 Print_to_cmd = False
 Print_Pie_Graphs = True
 Print_expenses_vs_time = True
-
+Log_On_Excel = False
 
 
 ########################################## Function definitions ##########################################
@@ -221,7 +221,9 @@ if not os.path.exists(Tracked_expenses_path):
         ("Subscriptions", "Public Transport"): [],
         ("Unaccounted", "Withdrawals"): [],
         ("Unaccounted", "Unknown"): [],
-        ("Total Sum", "/"): [],
+        ("Income", "Salary"): [],
+        ("Income", "Bizums"): [],
+        ("Total Sum Acc", "/"): [],
         ("Balance", "/"): []
     }
 
@@ -290,7 +292,7 @@ for date in Dates:
     Bizum = accumulate_movements('Gasto Bizum', Month_df)
     
     Restaurants_Bars = (accumulate_movements('Cafeterías y restaurantes', Month_df)
-                        - Eating_Out_Work - Uber_Eats - accumulate_movements('Ingreso Bizum', Month_df) )
+                        - Eating_Out_Work - Uber_Eats)
     
     Withdrawals = (accumulate_movements('Cajeros', Month_df) - Psychologist)
 
@@ -300,17 +302,22 @@ for date in Dates:
     
     ChatGPT = accumulate_movements('Pago en CHATGPT SUBSCRIPTION', Month_df)
     
-    Gym = accumulate_movements('Recibo ALTAFIT GRUPO DE GESTION S.L', Month_df)
+    Gym = ( accumulate_movements('Recibo ALTAFIT GRUPO DE GESTION S.L', Month_df) 
+           + accumulate_movements('Pago en ALTAFIT MAJADAHONDA MAJADAHONDA ES', Month_df) )
     
     Public_Transport = accumulate_movements('Transporte público', Month_df)
 
-    # Tally up
-    Total_accounted = Eating_Out_Work + Uber_Trip + Uber_Eats + Bizum + Restaurants_Bars + Bazar + ChatGPT + Gym + Psychologist  + Public_Transport + Dystopia  
+    Salary = accumulate_movements('Nomina recibida FUNDACION IMDEA NANOCIENCIA', Month_df)
 
-    # Total sum of movements is the balance at the begining of the list minus at the end of the list minus my salary
-    Salary = accumulate_movements('Nómina o Pensión', Month_df)
-    Balance = Month_df['SALDO (€)'].tolist()[0] - Month_df['SALDO (€)'].tolist()[-1] - Salary
-    Unaccounted = Balance - Total_accounted
+    Bizum_received = accumulate_movements('Ingreso Bizum', Month_df)
+
+    # Tally up
+    Expenses_Accounted = ( Eating_Out_Work + Uber_Trip + Uber_Eats + Bizum + Restaurants_Bars + Bazar 
+                       + ChatGPT + Gym + Psychologist  + Public_Transport + Dystopia + Withdrawals )
+
+    Balance = Month_df['SALDO (€)'].tolist()[0] - Month_df['SALDO (€)'].tolist()[-1]
+    Expenses_Total = Balance - Salary - Bizum_received
+    Expenses_Unaccounted = Expenses_Total - Expenses_Accounted
 
 
 
@@ -331,8 +338,10 @@ for date in Dates:
     Output_dic[("Subscriptions", "Gym")].append(Gym)
     Output_dic[("Subscriptions", "Public Transport")].append(Public_Transport)
     Output_dic[("Unaccounted", "Withdrawals")].append(Withdrawals)
-    Output_dic[("Unaccounted", "Unknown")].append(Unaccounted)
-    Output_dic[("Total Sum", "/")].append(Total_accounted)
+    Output_dic[("Unaccounted", "Unknown")].append(Expenses_Unaccounted)
+    Output_dic[("Income", "Salary")].append(Salary)
+    Output_dic[("Income", "Bizums")].append(Bizum_received)
+    Output_dic[("Total Sum Acc", "/")].append(Expenses_Accounted)
     Output_dic[("Balance", "/")].append(Balance)
 
     Output_df = pd.DataFrame.from_dict(Output_dic)
@@ -359,10 +368,10 @@ for date in Dates:
         print(f'    * Public Transport:  {Public_Transport:.2f} €')
         print(f'    * Withdrawals:  {Withdrawals:.2f} €')
         print(f'\n--------------------------------------\n')
-        print(f'    * Total sum:  {Total_accounted:.2f} €')
+        print(f'    * Total sum:  {Expenses_Total:.2f} €')
         print(f'    * Balance:  {Balance:.2f} €')
         print(f'\n--------------------------------------\n')
-        print(f'    * Unaccounted movements:  {Unaccounted:.2f} €')
+        print(f'    * Unaccounted movements:  {Expenses_Unaccounted:.2f} €')
         print(f'\n*************************************\n\n')
 
     # Graph results
@@ -371,8 +380,8 @@ for date in Dates:
     # Get labels for each pie slize from the df headers
     labels = Output_df.columns.tolist()
 
-    # This chart shouldn't show computed values like Balance, Total sum, etc... 
-    labels = labels[1:-2]
+    # This chart shouldn't show computed values like dates, Incomes, Computations, etc... 
+    labels = labels[1:-4]
 
     # Labels come from a multindex tuple and therefore look like this ("Category", "Subcategory"), 
     # for aesthetic purposes only subcategories are shown, if there are no subcategories the category is shown
@@ -391,8 +400,8 @@ for date in Dates:
     # Get sizes for pie slizes from the row content of the df
     sizes = Output_df.iloc[-1].tolist()
 
-    # This chart shouldn't show computed values like Balance, Total sum, etc... 
-    sizes = sizes[1:-2]
+    # This chart shouldn't show computed values like dates, incomes, Balance, Total sum, etc... 
+    sizes = sizes[1:-4]
 
     # Pie chart can't take negative values
     for i in range(0, len(sizes)):
@@ -454,7 +463,7 @@ for date in Dates:
         # Get cmap object from list of cmaps and create an ndarray storing
         # colors for each "slice" representing the subcategories in the category
         cmap = cmaps[i]
-        color = cmap( np.linspace(0.4, 0.5, int(subcat_count[i])) )
+        color = cmap( np.linspace(0.3, 0.6, int(subcat_count[i])) )
 
         # Deal with starting case when there's nothing to stack
         if (i==0):        
@@ -489,9 +498,11 @@ for date in Dates:
 
         ax.set_title(label = f'Expenses distribution\nMonth : {month}/{year}')
 
-# Write compiled data into the Output excel sheet
-Output_df.to_excel(Tracked_expenses_path)
 
+
+# Write compiled data into the Output excel sheet
+if (Log_On_Excel):
+    Output_df.to_excel(Tracked_expenses_path)
 
 
 # Create a graph showing evolution of explenses over time
@@ -504,27 +515,38 @@ if (Print_expenses_vs_time):
     items_list = list(Output_dic.items())
     Expenses = []
 
-    # Initialize previous expense to all zeros with appropiate size
-    acc_expense = np.empty( shape = len( Output_dic[("Month", "/")] ) )
-    skip_dates_col = True
-    for _, expense in items_list[1:-2]:
-
-        # Skip the dates column
-        if(skip_dates_col):
-            skip_dates_col = False
-            continue
+    # Sum all expenses iteratively to construct fill curves
+    dates = Output_dic[("Month", "/")]
+    acc_expense = np.zeros( shape = len( dates ) )
+    # Skip dates, incomes, sum and balance
+    for _, expense in items_list[1:-4]:
 
         # Cast to array to sum element wise
         curr_expense = np.array(expense)
         acc_expense = curr_expense + acc_expense
         Expenses.append(acc_expense)
-    
-    # Add them iteratively to fill between the lines
-    for i in range(0, len(Expenses)-1):
+
+    # Compare expanses to income
+    Income = np.array(Output_dic[("Income", "Salary")]) + np.array(Output_dic[("Income", "Bizums")])
+    plt.plot(dates, Income, color='k', label="Income")
+    # Emphasize zero crossing
+    plt.plot(dates, np.zeros(shape=len(dates)), color='red', alpha=0.5)
+
+    # Start to fill from the income line downwards to signify the progressive drain of income
+    Balances = [Income]
+    for expense in Expenses:
+        Balances.append(Income + expense)
+
+    # Fill between each line
+    for i in range(0, len(Balances)-1):
 
         # Dates are shared as a horizontal axis for all curves
-        plt.fill_between( Output_dic[("Month", "/")], Expenses[i], Expenses[i+1], color=colors[i])
+        plt.fill_between( dates , Balances[i], Balances[i+1], color=colors[i], label=labels_curated[i])
 
+    plt.xticks(dates)
+    plt.xlabel('Months')
+    plt.ylabel('Balance [€]')
+    plt.legend()
 
 # Display the plot
 plt.show()
