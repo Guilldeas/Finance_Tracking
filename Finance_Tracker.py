@@ -6,16 +6,16 @@ The spendings are grouped into the following categories:
 
 	- Savings (0 for the moment)
 
-	- Eating out Work ("Pago en CAFET. IMDEA NANOCIENCIA MADRID ES" + "Pago en LA ESTACION DE MAJADAHONDMAJADAHONDA ES")
+	- Eating out Work
 
-	- Uber to Work ("Taxi y Carsharing")
+	- Uber (mostly to work)
 
 	- Recreational
 		- Eating out ("Cafeterías y restaurantes" + "Supermercados y alimentacion" - "Eating out Work")
 		- Bars
-		- Bizum ("Transferencia Bizum emitida" - "Transferencia Bizum recibida?")
-		- Uber (No se puede diferencias)
+		- Bizum ("Transferencia Bizum emitida")
         - Bazar
+        - Clothing
 
 	- Subscriprion
 		- Psychologist (Check wether there's a 210 withdrawal in "Cajeros")
@@ -23,9 +23,13 @@ The spendings are grouped into the following categories:
 		- ChatGPT ("Pago en CHATGPT SUBSCRIPTION")
         - Gym
         - Public transport
+    
+    - Health
+        - Pharmacies + Dr visits
 
     - Untracked
-        - "Total" - "Accumulated Spendings"
+        - Withdrawaks
+        - Unaccounted
 
 '''
 
@@ -38,12 +42,12 @@ from datetime import datetime
 
 
 ############################################### Variables ###############################################
+# Modify the following flags to set different visualizations of the computed data
 
-# Flags
 Print_to_cmd = False
 Print_Pie_Graphs = False
 Print_expenses_vs_time = True
-Log_On_Excel = True
+Log_On_Excel = False
 
 
 ########################################## Function definitions ##########################################
@@ -207,11 +211,14 @@ Output_dic = {
         ("Recreational", "Bars And Restaurants"): [],
         ("Recreational", "Bizum"): [],
         ("Recreational", "Bazar"): [],
+        ("Recreational", "Clothing"): [],
+        ("Recreational", "Concerts And Movies"): [],
         ("Subscriptions", "Psychologist"): [],
         ("Subscriptions", "Dystopia"): [],
         ("Subscriptions", "ChatGPT"): [],
         ("Subscriptions", "Gym"): [],
         ("Subscriptions", "Public Transport"): [],
+        ("Health", "/"): [],
         ("Unaccounted", "Withdrawals"): [],
         ("Unaccounted", "Unknown"): [],
         ("Income", "Salary"): [],
@@ -303,8 +310,22 @@ for date in Dates:
 
     # Payments through Bizum and Withdrawals:
     # This payments have to be individualy serached in the list of movements
-    Psychologist = sum( find_movement (Amount = -210.00, Concept = 'Cajeros', df = Month_df) )
     Dystopia = sum( find_movement (Amount = -15.00, Concept = 'Transferencia Bizum emitida', df = Month_df) )
+
+    # Psychologist is 70€/visit and paid in cash so we look for multiples of said extraction
+    Psychologist_payments = []
+    for i in range (1, 6): 
+        Psychologist_payments.append(find_movement (Amount = -70.0 * i, Concept = 'Cajeros', df = Month_df))
+
+    # And sum them into one single amnount
+    Psychologist = 0.0
+    for payments in Psychologist_payments:
+
+        # Psychologist_payments is a list of lists, these lists hold all of the instances found for each multiple of 
+        # 70 between 1 and 4 so the list might be empty:
+        if not payments == []:
+            for instance in payments:
+                Psychologist += instance
 
     # Find all instances of movements for each category and add them into one single value
     Eating_Out_Work = ( accumulate_movements('Pago en CAFET. IMDEA NANOCIENCIA MADRID ES', Month_df) 
@@ -320,6 +341,10 @@ for date in Dates:
     Restaurants_Bars = (accumulate_movements('Cafeterías y restaurantes', Month_df)
                         - Eating_Out_Work - Uber_Eats)
     
+    Clothing = accumulate_movements('Ropa y complementos', Month_df)
+
+    Concerts_Movies = accumulate_movements('Cine, teatro y espectáculos', Month_df)
+    
     Withdrawals = (accumulate_movements('Cajeros', Month_df) - Psychologist)
 
     Bazar = ( accumulate_movements('Gasolina y combustible', Month_df) 
@@ -333,24 +358,28 @@ for date in Dates:
     
     Public_Transport = accumulate_movements('Transporte público', Month_df)
 
+    Health = ( accumulate_movements('Farmacia, herbolario y nutrición', Month_df) 
+              + accumulate_movements('Dentista, médico', Month_df) )
+
     Salary = accumulate_movements('Nomina recibida FUNDACION IMDEA NANOCIENCIA', Month_df)
 
     Bizum_received = accumulate_movements('Ingreso Bizum', Month_df)
 
     # Tally up
-    Expenses_Accounted = ( Eating_Out_Work + Uber_Trip + Uber_Eats + Bizum + Restaurants_Bars + Bazar 
-                       + ChatGPT + Gym + Psychologist  + Public_Transport + Dystopia + Withdrawals )
+    Expenses_Accounted = ( Eating_Out_Work + Uber_Trip + Uber_Eats + Bizum + Restaurants_Bars + Bazar + Clothing +
+                       + Concerts_Movies + ChatGPT + Gym + Psychologist  + Public_Transport + Dystopia + Health + Withdrawals )
 
     Balance = Month_df['SALDO (€)'].tolist()[0] - Month_df['SALDO (€)'].tolist()[-1]
     Expenses_Total = Balance - Salary - Bizum_received
     Expenses_Unaccounted = Expenses_Total - Expenses_Accounted
 
-
+    # Last day of the month to store data
+    last_day_month = Month_df['F. VALOR'].tolist()[-1]
 
     ################################################## Sort and store results #############################################
 
     # Append data to dict
-    Output_dic[("Month", "/")].append(datetime(year, month, 1))
+    Output_dic[("Month", "/")].append(last_day_month)
     Output_dic[("Savings", "/")].append(0.0)
     Output_dic[("Eating Out Work", "/")].append(Eating_Out_Work)
     Output_dic[("Uber To Work", "/")].append(Uber_Trip)
@@ -358,11 +387,14 @@ for date in Dates:
     Output_dic[("Recreational", "Bars And Restaurants")].append(Restaurants_Bars)
     Output_dic[("Recreational", "Bizum")].append(Bizum)
     Output_dic[("Recreational", "Bazar")].append(Bazar)
+    Output_dic[("Recreational", "Clothing")].append(Clothing)
+    Output_dic[("Recreational", "Concerts And Movies")].append(Concerts_Movies)
     Output_dic[("Subscriptions", "Psychologist")].append(Psychologist)
     Output_dic[("Subscriptions", "Dystopia")].append(Dystopia)
     Output_dic[("Subscriptions", "ChatGPT")].append(ChatGPT)
     Output_dic[("Subscriptions", "Gym")].append(Gym)
     Output_dic[("Subscriptions", "Public Transport")].append(Public_Transport)
+    Output_dic[("Health", "/")].append(Health)
     Output_dic[("Unaccounted", "Withdrawals")].append(Withdrawals)
     Output_dic[("Unaccounted", "Unknown")].append(Expenses_Unaccounted)
     Output_dic[("Income", "Salary")].append(Salary)
@@ -387,10 +419,13 @@ for date in Dates:
         print(f'    * Bars and Restaurants:  {Restaurants_Bars:.2f} €')
         print(f'    * Bizum:  {Bizum:.2f} €')
         print(f'    * Bazar:  {Bazar:.2f} €')
+        print(f'    * Clothing:  {Clothing:.2f} €')
+        print(f'    * Concerts and movies:  {Concerts_Movies:.2f} €')
         print(f'    * Psychologist:  {Psychologist:.2f} €')
         print(f'    * Dystopia:  {Dystopia:.2f} €')
         print(f'    * ChatGPT:  {ChatGPT:.2f} €')
         print(f'    * Gym:  {Gym:.2f} €')
+        print(f'    * Health:  {Health:.2f} €')
         print(f'    * Public Transport:  {Public_Transport:.2f} €')
         print(f'    * Withdrawals:  {Withdrawals:.2f} €')
         print(f'\n--------------------------------------\n')
@@ -477,8 +512,9 @@ for date in Dates:
     cmap_3 = plt.get_cmap('Reds')
     cmap_4 = plt.get_cmap('Greens')
     cmap_5 = plt.get_cmap('Purples')
-    cmap_6 = plt.get_cmap('Greys')
-    cmaps = [cmap_1, cmap_2, cmap_3, cmap_4, cmap_5, cmap_6]
+    cmap_6 = plt.get_cmap('Reds')
+    cmap_7 = plt.get_cmap('Greys')
+    cmaps = [cmap_1, cmap_2, cmap_3, cmap_4, cmap_5, cmap_6, cmap_7]
 
 
     # For each category create a set of colors in the same gradients
@@ -489,7 +525,7 @@ for date in Dates:
         # Get cmap object from list of cmaps and create an ndarray storing
         # colors for each "slice" representing the subcategories in the category
         cmap = cmaps[i]
-        color = cmap( np.linspace(0.3, 0.6, int(subcat_count[i])) )
+        color = cmap( np.linspace(0.2, 0.7, int(subcat_count[i])) )
 
         # Deal with starting case when there's nothing to stack
         if (i==0):        
@@ -558,8 +594,13 @@ if (Print_expenses_vs_time):
     # Compare expanses to income
     Income = np.array(Output_dic[("Income", "Salary")]) + np.array(Output_dic[("Income", "Bizums")])
     plt.plot(dates, Income, color='k', label="Income")
+    
     # Emphasize zero crossing
     plt.plot(dates, np.zeros(shape=len(dates)), color='red', alpha=0.5)
+
+    # Set a balance objective for +200€ savings +350€ rents +100€ dinner at home
+    balance_objective = [200 + 350 + 100]*len(dates)
+    plt.plot(dates, balance_objective, color='blue', alpha=0.5)
 
     # Start to fill from the income line downwards to signify the progressive drain of income
     Balances = [Income]
